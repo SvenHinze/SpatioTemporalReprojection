@@ -33,4 +33,4 @@
 #define _PROFILING_LOG 0                    // Set this to 1 to dump profiling data while profiler is active.
 #define _PROFILING_LOG_BATCH_SIZE 1024 * 1  // This can be used to control how many samples are accumulated before they are dumped to file.
 
-#define _ENABLE_NVAPI false // Controls NVIDIA specific DX extensions. If it is set to true, make sure you have the NVAPI package in your 'Externals' directory. View the readme for more information.
+#define _ENABLE_NVAPI true // Controls NVIDIA specific DX extensions. If it is set to true, make sure you have the NVAPI package in your 'Externals' directory. View the readme for more information.

@@ -64,5 +64,8 @@
     <None Include="Data\PathTracer.py">
       <Filter>Data</Filter>
     </None>
+    <None Include="Data\Tutorial.py">
+      <Filter>Data</Filter>
+    </None>
   </ItemGroup>
 </Project>

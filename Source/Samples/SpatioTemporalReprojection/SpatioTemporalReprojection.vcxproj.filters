@@ -2,8 +2,20 @@
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
     <ClCompile Include="SpatioTemporalReprojection.cpp" />
+    <ClCompile Include="RenderPasses\DebugOutput.cpp" />
+    <ClCompile Include="RenderPasses\GBufferRaster.cpp" />
+    <ClCompile Include="RenderPasses\Lighting.cpp" />
+    <ClCompile Include="RenderPasses\Reprojection.cpp" />
+    <ClCompile Include="RenderPasses\SimpleShadowPass.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="SpatioTemporalReprojection.h" />
+    <ClInclude Include="RenderPasses\DebugOutput.h" />
+    <ClInclude Include="RenderPasses\GBuffer.h" />
+    <ClInclude Include="RenderPasses\GBufferRaster.h" />
+    <ClInclude Include="RenderPasses\Lighting.h" />
+    <ClInclude Include="RenderPasses\Reprojection.h" />
+    <ClInclude Include="RenderPasses\SimpleShadowPass.h" />
+    <ClInclude Include="RenderPasses\RenderPasses.h" />
   </ItemGroup>
 </Project>

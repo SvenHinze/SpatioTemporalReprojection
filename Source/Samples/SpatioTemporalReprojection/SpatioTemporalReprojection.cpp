@@ -132,6 +132,7 @@ void SpatioTemporalReprojection::onLoad(RenderContext* pRenderContext)
     }
 }
 
+//TODO
 void SpatioTemporalReprojection::onFrameRender(RenderContext* pRenderContext, const Fbo::SharedPtr& pTargetFbo)
 {
     const float4 clearColor(0.38f, 0.52f, 0.10f, 1);

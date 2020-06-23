@@ -11,9 +11,21 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="RenderPasses\DebugOutput.cpp" />
+    <ClCompile Include="RenderPasses\GBufferRaster.cpp" />
+    <ClCompile Include="RenderPasses\Lighting.cpp" />
+    <ClCompile Include="RenderPasses\Reprojection.cpp" />
+    <ClCompile Include="RenderPasses\SimpleShadowPass.cpp" />
     <ClCompile Include="SpatioTemporalReprojection.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="RenderPasses\DebugOutput.h" />
+    <ClInclude Include="RenderPasses\GBuffer.h" />
+    <ClInclude Include="RenderPasses\GBufferRaster.h" />
+    <ClInclude Include="RenderPasses\Lighting.h" />
+    <ClInclude Include="RenderPasses\RenderPasses.h" />
+    <ClInclude Include="RenderPasses\Reprojection.h" />
+    <ClInclude Include="RenderPasses\SimpleShadowPass.h" />
     <ClInclude Include="SpatioTemporalReprojection.h" />
   </ItemGroup>
   <ItemGroup>

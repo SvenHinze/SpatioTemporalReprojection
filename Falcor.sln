@@ -88,6 +88,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "TutorialPass", "Source\Rend
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ReprojectionPass", "Source\RenderPasses\ReprojectionPass\ReprojectionPass.vcxproj", "{9EC37CCE-878F-4B24-8A86-E5C7DACB4434}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "SpatioTemporalReprojection", "Source\Samples\SpatioTemporalReprojection\SpatioTemporalReprojection.vcxproj", "{4C7D0BA9-5A82-4C1E-BB84-C9259D349F72}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
@@ -360,6 +362,14 @@ Global
 		{9EC37CCE-878F-4B24-8A86-E5C7DACB4434}.Release|x64.Build.0 = Release|x64
 		{9EC37CCE-878F-4B24-8A86-E5C7DACB4434}.ReleaseD3D12|x64.ActiveCfg = Release|x64
 		{9EC37CCE-878F-4B24-8A86-E5C7DACB4434}.ReleaseD3D12|x64.Build.0 = Release|x64
+		{4C7D0BA9-5A82-4C1E-BB84-C9259D349F72}.Debug|x64.ActiveCfg = Debug|x64
+		{4C7D0BA9-5A82-4C1E-BB84-C9259D349F72}.Debug|x64.Build.0 = Debug|x64
+		{4C7D0BA9-5A82-4C1E-BB84-C9259D349F72}.DebugD3D12|x64.ActiveCfg = Debug|x64
+		{4C7D0BA9-5A82-4C1E-BB84-C9259D349F72}.DebugD3D12|x64.Build.0 = Debug|x64
+		{4C7D0BA9-5A82-4C1E-BB84-C9259D349F72}.Release|x64.ActiveCfg = Release|x64
+		{4C7D0BA9-5A82-4C1E-BB84-C9259D349F72}.Release|x64.Build.0 = Release|x64
+		{4C7D0BA9-5A82-4C1E-BB84-C9259D349F72}.ReleaseD3D12|x64.ActiveCfg = Release|x64
+		{4C7D0BA9-5A82-4C1E-BB84-C9259D349F72}.ReleaseD3D12|x64.Build.0 = Release|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

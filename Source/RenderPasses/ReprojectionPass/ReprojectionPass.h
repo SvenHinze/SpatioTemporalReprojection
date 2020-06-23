@@ -66,6 +66,7 @@ public:
 
 private:
     ReprojectionPass() = default;
+    //ReprojectionPass() : RenderPass("Reprojection") {}
 
     enum : uint32_t
     {

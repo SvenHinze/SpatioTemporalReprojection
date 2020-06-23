@@ -35,9 +35,7 @@ uint32_t mSampleGuiPositionY = 40;
 const glm::vec4 clearColor = glm::vec4(1.0f, 0, 0, 1.0f);
 const bool initOpenVR = true;
 
-uint32_t SpatioTemporalReprojection::stereoTarget = 0;
-
-void SpatioTemporalReprojection::onLoad(RenderContext* pRenderContext)
+void SpatioTemporalReprojection::onLoad(RenderContext* renderContext)
 {
     if(gpDevice->isFeatureSupported(Device::SupportedFeatures::Raytracing) == false)
     {
@@ -117,7 +115,7 @@ void SpatioTemporalReprojection::onLoad(RenderContext* pRenderContext)
     //    renderGraph->markOutput("FXAA_Right.dst");
     //}
 
-    //renderGraph->onResize(sample->getCurrentFbo().get()); @fix find out what samplecallbacks are and how to substitute
+    renderGraph->onResize(gpFramework->getTargetFbo().get()); //TODO try if this does the same
 
 #if USERAINBOW
     rainbowTex = createTextureFromFile(getSolutionDirectory() + "TestData\\rainbow_tex.dds", false, true, Resource::BindFlags::ShaderResource);
@@ -133,10 +131,118 @@ void SpatioTemporalReprojection::onLoad(RenderContext* pRenderContext)
 }
 
 //TODO
-void SpatioTemporalReprojection::onFrameRender(RenderContext* pRenderContext, const Fbo::SharedPtr& pTargetFbo)
+void SpatioTemporalReprojection::onFrameRender(RenderContext* renderContext, const Fbo::SharedPtr& targetFbo)
 {
-    const float4 clearColor(0.38f, 0.52f, 0.10f, 1);
-    pRenderContext->clearFbo(pTargetFbo.get(), clearColor, 1.0f, 0, FboAttachmentType::All);
+    if(measurementRunning)
+    {
+        if(frameCount >= _PROFILING_LOG_BATCH_SIZE)
+        {
+            resetFixedTime();
+            numCycles++;
+        }
+
+        if(numCycles > numCyclesToRun)
+        {
+            stopMeasurement();
+        }
+    }
+
+    switch(renderMode)
+    {
+    case RenderMode::RenderToScreen:
+        updateValues();
+        renderContext->clearFbo(targetFbo.get(), glm::vec4(0), 1.0f, 0, FboAttachmentType::Color);
+
+        if(renderGraph->getScene() != nullptr)
+        {
+            stereoTarget = StereoTarget::Left;
+            camController.update();
+
+            if(useFixedUpdate)
+            {
+                renderGraph->getScene()->update(renderContext, fixedFrameTime);
+
+                if(fixedRunning)
+                {
+                    frameCount++;
+                }
+
+                fixedFrameTime = frameCount * (double)fixedSpeed;
+            }
+            else
+            {
+                //renderGraph->getScene()->update(pRenderContext, pSample->getCurrentTime()); @fix find out how to substitute (maybe global clock)
+            }
+
+            renderGraph->execute(renderContext);
+
+            if(useReprojection)
+            {
+                RenderToScreenReprojected(renderContext, targetFbo);
+            }
+            else
+            {
+                renderToScreenSimple(renderContext, targetFbo);
+            }
+        }
+        break;
+
+    case RenderMode::RenderToHMD:
+        if(useReprojection)
+        {
+            renderToHMDReprojected(renderContext, targetFbo);
+        }
+        else
+        {
+            renderToHMDSimple(renderContext, targetFbo);
+        }
+        break;
+
+    default:
+        break;
+    }
+}
+
+void SpatioTemporalReprojection::renderToScreenSimple(RenderContext* renderContext, const Fbo::SharedPtr& targetFbo)
+{
+    if(sideBySide)
+    {
+        switch(outputImage)
+        {
+        case OutputImage::Both:
+            glm::uvec4 rectSrc     = glm::uvec4(gpFramework->getTargetFbo()->getWidth() / 4, 0, gpFramework->getTargetFbo()->getWidth() * 0.75f, gpFramework->getTargetFbo()->getHeight());
+            glm::uvec4 leftRectDst = glm::uvec4(0, 0, gpFramework->getTargetFbo()->getWidth() / 2, gpFramework->getTargetFbo()->getHeight());
+            renderContext->blit(renderGraph->getOutput(leftOutput)->getSRV(), targetFbo->getRenderTargetView(0), cropOutput ? rectSrc : glm::uvec4(-1), leftRectDst);
+
+            stereoTarget = StereoTarget::Right;
+            renderGraph->execute(renderContext);                                              //adding 1/2 + 1/2 should be redundant
+            glm::uvec4 rightRect = glm::uvec4(gpFramework->getTargetFbo()->getWidth() / 2, 0, gpFramework->getTargetFbo()->getWidth() / 2 + gpFramework->getTargetFbo()->getWidth() / 2, gpFramework->getTargetFbo()->getHeight());
+            renderContext->blit(renderGraph->getOutput(leftOutput)->getSRV(), targetFbo->getRenderTargetView(0), cropOutput ? rectSrc : glm::uvec4(-1), rightRect);
+
+            break;
+
+        case OutputImage::Left:
+            renderContext->blit(renderGraph->getOutput(leftOutput)->getSRV(), targetFbo->getRenderTargetView(0));
+            stereoTarget = StereoTarget::Right;
+            renderGraph->execute(renderContext);
+            break;
+
+        case OutputImage::Right:
+            stereoTarget = StereoTarget::Right;
+            renderGraph->execute(renderContext);
+            renderContext->blit(renderGraph->getOutput(leftOutput)->getSRV(), targetFbo->getRenderTargetView(0));
+            break;
+        }
+    }
+    else
+    {
+        renderContext->blit(renderGraph->getOutput(leftOutput)->getSRV(), targetFbo->getRenderTargetView(0));
+    }
+}
+
+void SpatioTemporalReprojection::renderToHMDSimple(RenderContext* renderContext, const Fbo::SharedPtr& targetFbo)
+{
+    //TODO
 }
 
 void SpatioTemporalReprojection::onGuiRender(Gui* pGui)

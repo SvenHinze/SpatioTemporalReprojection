@@ -28,8 +28,8 @@
 #pragma once
 #include "Falcor.h"
 #include "FalcorExperimental.h"
-#include "RenderPasses/RenderPasses.h";
-//#include "StereoCameraController.h"
+#include "../RenderPasses/RenderPasses.h";
+#include "StereoCameraController.h"
 
 // Override all base texture with rainbow test texture to visualize Mip-Levels
 #define USERAINBOW 0
@@ -39,8 +39,12 @@ using namespace Falcor;
 class SpatioTemporalReprojection : public IRenderer
 {
 public:
-    // defines which render target is rendered next (left/right <=> 0/1)
-    static uint32_t stereoTarget;
+
+    enum StereoTarget : uint32_t
+    {
+        Left = 1,
+        Right
+    } stereoTarget = Left;
 
     bool sideBySide = true;
 
@@ -48,13 +52,13 @@ private:
 
     static const std::string startupScene;
 
-    enum : uint32_t
+    enum RenderMode : uint32_t
     {
         RenderToScreen = 1,
         RenderToHMD
     } renderMode = RenderToScreen;
 
-    enum : uint32_t
+    enum OutputImage: uint32_t
     {
         Both = 1,
         Left,
@@ -63,7 +67,7 @@ private:
 
     //SampleCallbacks* sample; @fix see if needed
     RenderGraph::SharedPtr renderGraph;
-    //StereoCameraController camController; @fix implement
+    StereoCameraController camController; //@fix
     bool altPressed = false;
     Fbo::SharedPtr hmdFbo;
     Texture::SharedPtr rainbowTexture;
@@ -96,14 +100,14 @@ private:
 
 public:
 
-    void onLoad(RenderContext* pRenderContext) override;
-    void onFrameRender(RenderContext* pRenderContext, const Fbo::SharedPtr& pTargetFbo) override;
+    void onLoad(RenderContext* renderContext) override;
+    void onFrameRender(RenderContext* renderContext, const Fbo::SharedPtr& targetFbo) override;
     void onShutdown() override;
     void onResizeSwapChain(uint32_t width, uint32_t height) override;
     bool onKeyEvent(const KeyboardEvent& keyEvent) override;
     bool onMouseEvent(const MouseEvent& mouseEvent) override;
     void onHotReload(HotReloadFlags reloaded) override;
-    void onGuiRender(Gui* pGui) override;
+    void onGuiRender(Gui* gui) override;
 
     void onClickResize();
     void resetFixedTime();

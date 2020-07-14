@@ -178,7 +178,7 @@ void SpatioTemporalReprojection::onFrameRender(RenderContext* renderContext, con
 
             if(useReprojection)
             {
-                RenderToScreenReprojected(renderContext, targetFbo);
+                renderToScreenReprojected(renderContext, targetFbo);
             }
             else
             {
@@ -210,13 +210,13 @@ void SpatioTemporalReprojection::renderToScreenSimple(RenderContext* renderConte
         switch(outputImage)
         {
         case OutputImage::Both:
-            glm::uvec4 rectSrc     = glm::uvec4(gpFramework->getTargetFbo()->getWidth() / 4, 0, gpFramework->getTargetFbo()->getWidth() * 0.75f, gpFramework->getTargetFbo()->getHeight());
-            glm::uvec4 leftRectDst = glm::uvec4(0, 0, gpFramework->getTargetFbo()->getWidth() / 2, gpFramework->getTargetFbo()->getHeight());
+            glm::uvec4 rectSrc     = glm::uvec4(currentFboWidth() / 4, 0, currentFboWidth() * 0.75f, currentFboHeight());
+            glm::uvec4 leftRectDst = glm::uvec4(0, 0, currentFboWidth() / 2, currentFboHeight());
             renderContext->blit(renderGraph->getOutput(leftOutput)->getSRV(), targetFbo->getRenderTargetView(0), cropOutput ? rectSrc : glm::uvec4(-1), leftRectDst);
 
             stereoTarget = StereoTarget::Right;
             renderGraph->execute(renderContext);                                              //adding 1/2 + 1/2 should be redundant
-            glm::uvec4 rightRect = glm::uvec4(gpFramework->getTargetFbo()->getWidth() / 2, 0, gpFramework->getTargetFbo()->getWidth() / 2 + gpFramework->getTargetFbo()->getWidth() / 2, gpFramework->getTargetFbo()->getHeight());
+            glm::uvec4 rightRect = glm::uvec4(currentFboWidth() / 2, 0, currentFboWidth() / 2 + currentFboWidth() / 2, currentFboHeight());
             renderContext->blit(renderGraph->getOutput(leftOutput)->getSRV(), targetFbo->getRenderTargetView(0), cropOutput ? rectSrc : glm::uvec4(-1), rightRect);
 
             break;
@@ -242,17 +242,117 @@ void SpatioTemporalReprojection::renderToScreenSimple(RenderContext* renderConte
 
 void SpatioTemporalReprojection::renderToHMDSimple(RenderContext* renderContext, const Fbo::SharedPtr& targetFbo)
 {
-    //TODO
+    if(!vrRunning)
+    {
+        initVR(gpFramework->getTargetFbo().get());
+    }
+
+    //VRSystem::instance()->refresh(); @fix VRSystem no longer exists
+    updateValues();
+
+    renderContext->clearFbo(hmdFbo.get(), clearColor, 1.0f, 0, FboAttachmentType::Color);
+    renderContext->clearFbo(targetFbo.get(), glm::vec4(0), 1.0f, 0, FboAttachmentType::Color);
+
+    if(renderGraph->getScene() != nullptr)
+    {
+        //renderContext->getGraphicsState()->setFbo(hmdFbo); @fix getGraphicsState() no longer exists
+
+        //left eye
+        stereoTarget = StereoTarget::Left;
+
+        //hmdCamController.update(); @fix
+
+        //renderGraph->getScene()->update(renderContext, pSample->getCurrentTime()); @fix
+        renderGraph->execute(renderContext);
+
+        glm::uvec4 rectSrc = glm::uvec4(currentFboWidth() / 4, 0, currentFboWidth() * 0.75f, currentFboHeight());
+        renderContext->blit(renderGraph->getOutput(leftOutput)->getSRV(), hmdFbo->getRenderTargetView(0));
+
+        //right eye
+        stereoTarget = StereoTarget::Right;
+        renderGraph->execute(renderContext);
+
+        renderContext->blit(renderGraph->getOutput(leftOutput)->getSRV(), hmdFbo->getRenderTargetView(1));
+
+        //@fix
+        //vrSystem->submit(VRDisplay::Eye::Left, hmdFbo->getColorTexture(0), renderContext);
+        //vrSystem->submit(VRDisplay::Eye::Right, hmdFbo->getColorTexture(1), renderContext);
+
+        
+
+        glm::uvec4 rectTarget = glm::uvec4(0, 0, hmdFbo->getWidth(), hmdFbo->getHeight());
+        renderContext->blit(hmdFbo->getColorTexture(0)->getSRV(), targetFbo->getRenderTargetView(0), glm::uvec4(-1), rectTarget);
+    }
 }
 
-void SpatioTemporalReprojection::onGuiRender(Gui* pGui)
+void SpatioTemporalReprojection::renderToScreenReprojected(RenderContext* renderContext, const Fbo::SharedPtr& targetFbo)
 {
-    Gui::Window w(pGui, "Falcor", { 250, 200 });
-    gpFramework->renderGlobalUI(pGui);
-    w.text("Hello from SpatioTemporalReprojection");
-    if (w.button("Click Here"))
+    if(sideBySide)
     {
-        msgBox("Now why would you do that?");
+        switch(outputImage)
+        {
+        case OutputImage::Both:
+            //left eye
+            glm::uvec4 rectSrc = glm::uvec4(currentFboWidth() / 4, 0, currentFboWidth() * 0.75f, currentFboHeight());
+            glm::uvec4 leftRectDst = glm::uvec4(0, 0, currentFboWidth() / 2, currentFboHeight());
+            renderContext->blit(renderGraph->getOutput(leftOutput)->getSRV(), targetFbo->getRenderTargetView(0), cropOutput ? rectSrc : glm::uvec4(-1), leftRectDst);
+
+            //right eye                                                 should be redundant
+            glm::uvec4 rightRect = glm::uvec4(currentFboWidth() / 2, 0, currentFboWidth() / 2 + currentFboWidth() / 2, currentFboHeight());
+            renderContext->blit(renderGraph->getOutput(rightOutput)->getSRV(), targetFbo->getRenderTargetView(0), cropOutput ? rectSrc : glm::uvec4(-1), rightRect);
+            break;
+
+        case OutputImage::Left:
+            renderContext->blit(renderGraph->getOutput(leftOutput)->getSRV(), targetFbo->getRenderTargetView(0));
+            break;
+
+        case OutputImage::Right:
+            renderContext->blit(renderGraph->getOutput(rightOutput)->getSRV(), targetFbo->getRenderTargetView(0));
+            break;
+        }
+    }
+    else
+    {
+        renderContext->blit(renderGraph->getOutput(leftOutput)->getSRV(), targetFbo->getRenderTargetView(0));
+    }
+}
+
+void SpatioTemporalReprojection::renderToHMDReprojected(RenderContext* renderContext, const Fbo::SharedPtr& targetFbo)
+{
+    if(!vrRunning)
+    {
+        initVR(gpFramework->getTargetFbo().get());
+    }
+
+    //VRSystem::instance()->refresh(); @fix
+    updateValues();
+
+    renderContext->clearFbo(hmdFbo.get(), clearColor, 1.0f, 0, FboAttachmentType::Color);
+    renderContext->clearFbo(targetFbo.get(), glm::vec4(0), 1.0f, 0, FboAttachmentType::Color);
+
+    if(renderGraph->getScene() != nullptr)
+    {
+        //renderContext->getGraphicsState()->setFbo(hmdFbo); @fix
+
+        //left eye
+        stereoTarget = StereoTarget::Left;
+
+        //hmdCamController.update(); @fix
+        //renderGraph->getScene()->update(renderContext, pSample->getCurrentTime()); @fix
+        renderGraph->execute(renderContext);
+
+        glm::uvec4 rectSrc = glm::uvec4(currentFboWidth() / 4, 0, currentFboWidth() * 0.75f, currentFboHeight());
+        renderContext->blit(renderGraph->getOutput(leftOutput)->getSRV(), hmdFbo->getRenderTargetView(0));
+
+        //right eye?
+        renderContext->blit(renderGraph->getOutput(rightOutput)->getSRV(), hmdFbo->getRenderTargetView(1));
+
+        //@fix
+        //vrSystem->submit(VRDisplay::Eye::Left, hmdFbo->getColorTexture(0), renderContext);
+        //vrSystem->submit(VRDisplay::Eye::Right, hmdFbo->getColorTexture(1), renderContext);
+
+        glm::uvec4 rectTarget = glm::uvec4(0, 0, hmdFbo->getWidth(), hmdFbo->getHeight());
+        renderContext->blit(hmdFbo->getColorTexture(1)->getSRV(), targetFbo->getRenderTargetView(0), glm::uvec4(-1), rectTarget);
     }
 }
 
@@ -260,22 +360,254 @@ void SpatioTemporalReprojection::onShutdown()
 {
 }
 
+void SpatioTemporalReprojection::onResizeSwapChain(uint32_t width, uint32_t height)
+{
+if(renderGraph)
+{
+    switch(renderMode)
+    {
+    case RenderMode::RenderToScreen:
+        if(renderGraph->getScene() != nullptr)
+        {
+            renderGraph->getScene()->setCameraAspectRatio((float)width / (float)height);
+        }
+
+        renderGraph->onResize(gpFramework->getTargetFbo().get());
+        break;
+
+    case RenderMode::RenderToHMD:
+        initVR(gpFramework->getTargetFbo().get());
+        break;
+
+    default:
+        break;
+    }
+}
+}
+
 bool SpatioTemporalReprojection::onKeyEvent(const KeyboardEvent& keyEvent)
 {
-    return false;
+    bool handled = false;
+
+    if(renderGraph->getScene() != nullptr)
+    {
+        handled = renderGraph->onKeyEvent(keyEvent);
+    }
+
+    if(!keyEvent.mods.isAltDown)
+    {
+        altPressed = false;
+
+        switch(renderMode)
+        {
+        case RenderMode::RenderToScreen:
+            //TODO there are no returns in nikos code, but the same structure can be seen in mouseEvent
+            return handled ? true : camController.onKeyEvent(keyEvent);
+
+        case RenderMode::RenderToHMD:
+            //return handled ? true : hmdCamController.onKeyEvent(keyEvent); @fix
+        }
+    }
+    else
+    {
+        altPressed = true;
+    }
+
+    return handled;
 }
 
 bool SpatioTemporalReprojection::onMouseEvent(const MouseEvent& mouseEvent)
 {
-    return false;
+    bool handled = false;
+
+    if(renderGraph->getScene() != nullptr)
+    {
+        handled = renderGraph->onMouseEvent(mouseEvent);
+    }
+
+    if(!altPressed)
+    {
+        switch(renderMode)
+        {
+        case RenderMode::RenderToScreen:
+            return handled ? true : camController.onMouseEvent(mouseEvent);
+        case RenderMode::RenderToHMD:
+            //return handled ? true : hmdCamController.onMouseEvent(mouseEvent); @fix
+        }
+    }
+
+    return handled;
 }
 
 void SpatioTemporalReprojection::onHotReload(HotReloadFlags reloaded)
 {
+    onClickResize();
 }
 
-void SpatioTemporalReprojection::onResizeSwapChain(uint32_t width, uint32_t height)
+void SpatioTemporalReprojection::onGuiRender(Gui* gui)
 {
+    Gui::Window guiWindow(gui, "Falcor", { 250, 200 });
+    gpFramework->renderGlobalUI(gui);
+
+    if(guiWindow.button("Load Scene"))
+    {
+        assert(renderGraph != nullptr);
+
+        std::string filename;
+        if(openFileDialog(Scene::kFileExtensionFilters, filename))
+        {
+            loadScene(filename);
+        }
+    }
+
+    //guiWindow.var("Light Count", lightCount);
+
+    if(guiWindow.checkbox("Use Camera Path", useCameraPath))
+    {
+        applyCameraPathState();
+    }
+
+    if(renderMode == RenderMode::RenderToScreen)
+    {
+        guiWindow.checkbox("Use Fixed Update", useFixedUpdate);
+
+        if(useFixedUpdate)
+        {
+            guiWindow.var("Frame Count", frameCount, 0);
+            guiWindow.var("Fixed Speed", fixedSpeed, 0.0f, 2.0f);
+            float fixTime = (float)fixedFrameTime;
+            guiWindow.var("Current Fixed Time", fixTime);
+
+            if(guiWindow.button("Reset"))
+            {
+                resetFixedTime();
+            }
+
+            if(guiWindow.button("Stop", true))
+            {
+                fixedRunning = false;
+            }
+
+            if(guiWindow.button("Start", true))
+            {
+                fixedRunning = true;
+            }
+
+            std::string sampleText = std::to_string(_PROFILING_LOG_BATCH_SIZE) + " Samples";
+            guiWindow.text(sampleText.c_str());
+            guiWindow.var("Measure Cycles", numCyclesToRun);
+
+            if(guiWindow.button("Start Measurement"))
+            {
+                startMeasurement();
+            }
+
+            if(guiWindow.button("Stop Measurement", true))
+            {
+                stopMeasurement();
+            }
+        }
+    }
+
+    guiWindow.separator();
+
+    if(guiWindow.checkbox("Reprojection Pass", useReprojection))
+    {
+        if(useReprojection)
+        {
+            renderGraph->markOutput("Reprojection.out");
+        }
+        else
+        {
+            renderGraph->unmarkOutput("Reprojection.out");
+        }
+
+        onClickResize();
+    }
+
+    Gui::DropdownList renderModeList;
+    renderModeList.push_back({ 1, "Render To Screen" });
+
+    if(initOpenVR)
+    {
+        renderModeList.push_back({ 2, "Render To HMD" });
+    }
+
+    guiWindow.dropdown("Render Mode", renderModeList, (uint32_t&)renderMode);
+
+    switch(renderMode)
+    {
+    case RenderMode::RenderToScreen:
+        guiWindow.checkbox("Side-by-Side Stereo", sideBySide);
+
+        if(sideBySide)
+        {
+            Gui::DropdownList outputImageList;
+            outputImageList.push_back({ 1, "Both" });
+            outputImageList.push_back({ 2, "Left" });
+            outputImageList.push_back({ 3, "Right" });
+            guiWindow.dropdown("Output Image", outputImageList, (uint32_t&)outputImage);
+
+            guiWindow.checkbox("Crop Output", cropOutput);
+            //guiWindow.slider("IPD", camController.ipd, 0.05f, 0.08f); @fix
+            //guiWindow.slider("Z0", camController.z0, 0.0f, 20.0f); @fix
+        }
+
+        break;
+
+    case RenderMode::RenderToHMD:
+        break;
+
+    default:
+        break;
+    }
+
+    //@fix only include if FXAA needed
+    /*if(guiWindow.checkbox("Use FXAA", useFXAA))
+    {
+        if(useFXAA)
+        {
+            renderGraph->markOutput("FXAA_Left.dst");
+            renderGraph->markOutput("FXAA_Right.dst");
+        }
+        else
+        {
+            renderGraph->unmarkOutput("FXAA_Left.dst");
+            renderGraph->unmarkOutput("FXAA_Right.dst");
+        }
+
+        leftOutput = useFXAA ? "FXAA_Left.dst" : "Light.out";
+        rightOutput = useFXAA ? "FXAA_Right.dst" : "Reprojection.out";
+
+        onClickResize();
+    }*/
+
+    if(guiWindow.button("4K Resolution"))
+    {
+        Fbo::Desc fboDesc;
+        fboDesc.setColorTarget(0, gpFramework->getTargetFbo()->getColorTexture(0)->getFormat()).setDepthStencilTarget(gpFramework->getTargetFbo()->getDepthStencilTexture()->getFormat());
+
+        hmdFbo = Fbo::create2D(3840, 2160, fboDesc);
+        renderGraph->onResize(hmdFbo.get());
+    }
+
+    guiWindow.separator();
+
+    //@fix might make problems
+    if(renderGraph != nullptr)
+    {
+        renderGraph->getScene()->renderUI(guiWindow);
+    }
+}
+
+void SpatioTemporalReprojection::onClickResize()
+{
+    renderGraph->onResize(gpFramework->getTargetFbo().get());
+}
+
+void SpatioTemporalReprojection::loadScene(const std::string& filename)
+{
+    //TODO
 }
 
 int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _In_ LPSTR lpCmdLine, _In_ int nShowCmd)

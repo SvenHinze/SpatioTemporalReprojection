@@ -124,12 +124,15 @@ private:
     void renderToHMDSimple(RenderContext* renderContext, const Fbo::SharedPtr& targetFbo);
 
     //Reprojection Pass
-    void RenderToScreenReprojected(RenderContext* renderContext, const Fbo::SharedPtr& targetFbo);
+    void renderToScreenReprojected(RenderContext* renderContext, const Fbo::SharedPtr& targetFbo);
     void renderToHMDReprojected(RenderContext* renderContext, const Fbo::SharedPtr& targetFbo);
 
     std::string getSolutionDirectory();
 
     void startMeasurement();
     void stopMeasurement();
+
+    inline uint32_t currentFboWidth() { return gpFramework->getTargetFbo()->getWidth(); }
+    inline uint32_t currentFboHeight() { return gpFramework->getTargetFbo()->getHeight(); }
 
 };
